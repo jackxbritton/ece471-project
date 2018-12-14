@@ -82,14 +82,17 @@ static void *web_proc(void *arg) {
 		}
 
 		// Read the request.
-		if (read(fd, buf, sizeof(buf)) == -1) {
+		int count = read(fd, buf, sizeof(buf)-1);
+		if (count == -1) {
 			perror("web_proc");
 			close(fd);
 			return NULL;
 		}
+		buf[count] = 0; // Null-terminate the string.
+
+		printf(buf);
 
 		// If it's looking to blend, let's blend.
-		printf("%s\n", buf);
 		if (strstr(buf, "blend") != NULL) {
 
 			// Toggle GPIO21.
@@ -115,7 +118,6 @@ static void *web_proc(void *arg) {
 				close(fd);
 				return NULL;
 			}
-
 
 		} else {
 
@@ -177,16 +179,10 @@ int web_init() {
 		close(socket_fd);
 		return -1;
 	}
-	if (open_write_close("/sys/class/gpio/gpio21/direction", "out") == -1) {
+	if (open_write_close("/sys/class/gpio/gpio21/direction", "in") == -1) {
 		perror("web_init");
 		close(socket_fd);
-		open_write_close("/sys/class/gpio/gpio21/unexport", "21");
-		return -1;
-	}
-	if (open_write_close("/sys/class/gpio/gpio21/value", "0") == -1) {
-		perror("web_init");
-		close(socket_fd);
-		open_write_close("/sys/class/gpio/gpio21/unexport", "21");
+		open_write_close("/sys/class/gpio/unexport", "21");
 		return -1;
 	}
 
@@ -195,7 +191,7 @@ int web_init() {
 	if (pthread_create(&thread, NULL, web_proc, NULL) != 0) {
 		perror("web_init");
 		close(socket_fd);
-		open_write_close("/sys/class/gpio/gpio21/unexport", "21");
+		open_write_close("/sys/class/gpio/unexport", "21");
 		return 1;
 	}
 
